@@ -1,0 +1,18 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+
+# App build output (regenerate with app/build.sh)
+app/build/
+
+# Raw photos: large, and personal. Tests use any *.NEF placed in the project root.
+*.NEF
+*.nef
+*.NEF.orig
+fixed/
