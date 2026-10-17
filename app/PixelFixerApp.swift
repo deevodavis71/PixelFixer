@@ -207,7 +207,10 @@ final class AppModel: ObservableObject {
                     if line.hasPrefix("Loaded ") { return }
                     let ok = line.contains(": fixed ") || line.contains("nothing to fix")
                     if ok || line.contains(": ERROR") { self.progress.done += 1 }
-                    self.append(line, isErr || line.contains("ERROR") ? .error : ok ? .success : .info)
+                    // "DSC_1.NEF: fixed 9 pixels -> /long/path" — the Done message says where files went.
+                    let text = (line.components(separatedBy: " -> ").first ?? line)
+                        .trimmingCharacters(in: .whitespaces)
+                    self.append(text, isErr || line.contains("ERROR") ? .error : ok ? .success : .info)
                 }
             }
             busy = false

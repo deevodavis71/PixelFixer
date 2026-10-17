@@ -5,6 +5,13 @@ Removes hot and dead pixels from Nikon NEF raw files. Like the Windows
 the output is still a normal NEF. Lightroom, Capture One, NX Studio and Apple
 Photos all open it as usual, and the metadata and embedded previews are unchanged.
 
+![PixelFixer main window](docs/main-window.png)
+
+The **Spot Preview** shows zoomed before/after crops of each spot that will be
+removed at the current threshold:
+
+<img src="docs/spot-preview.png" alt="Spot Preview window" width="600">
+
 ## Acknowledgements
 
 This project was inspired by [Pixel Fixer](https://pixelfixer.org/), Thomas
