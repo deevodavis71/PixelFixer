@@ -1,0 +1,92 @@
+name: Build and release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # allow manual runs from the Actions tab
+
+permissions:
+  contents: write # needed to create tags and releases
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install engine and test tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . pytest
+
+      - name: Smoke-test the engine
+        run: |
+          python -c "import pixelfixer.cli, pixelfixer.core, pixelfixer.spots, pixelfixer.nef, pixelfixer.nikon_codec"
+          python -m pixelfixer --help
+          # Round-trip tests need a NEF (raw files aren't committed), so they're skipped here.
+          python -m pytest -q tests
+
+      - name: Work out the version
+        id: version
+        run: |
+          VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION-build.$GITHUB_RUN_NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: Build universal app
+        env:
+          ARCHS: arm64 x86_64
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: |
+          app/build.sh
+          lipo -info app/build/PixelFixer.app/Contents/MacOS/PixelFixer
+          codesign --verify --deep --strict app/build/PixelFixer.app
+
+      - name: Package
+        id: package
+        run: |
+          ZIP="PixelFixer-${{ steps.version.outputs.version }}-build.${{ github.run_number }}.zip"
+          # ditto keeps the bundle's signature and metadata intact.
+          ditto -c -k --keepParent app/build/PixelFixer.app "$ZIP"
+          shasum -a 256 "$ZIP" | tee "$ZIP.sha256"
+          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PixelFixer
+          path: ${{ steps.package.outputs.zip }}
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          ZIP: ${{ steps.package.outputs.zip }}
+        run: |
+          cat > notes.md <<'EOF'
+          Built automatically from the latest commit to `main`. Universal app for Apple silicon and Intel Macs running macOS 14 or later.
+
+          ### Install
+          1. Install Python and the engine's libraries (once):
+             ```sh
+             brew install python
+             python3 -m pip install --break-system-packages numpy scipy rawpy pillow
+             ```
+          2. Unzip and drag **PixelFixer.app** to Applications.
+          3. The app isn't notarised by Apple, so the first launch is blocked. Open **System Settings → Privacy & Security**, scroll down and click **Open Anyway**. Alternatively, run `xattr -dr com.apple.quarantine /Applications/PixelFixer.app`.
+
+          ### Changes
+          EOF
+          gh release create "$TAG" "$ZIP" "$ZIP.sha256" \
+            --target "$GITHUB_SHA" \
+            --title "PixelFixer ${{ steps.version.outputs.version }} (build ${{ github.run_number }})" \
+            --notes-file notes.md \
+            --generate-notes \
+            --latest

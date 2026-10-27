@@ -89,6 +89,21 @@ lowest score the Preview analyses.
   built-in guide covering dark frames, fixing, spot removal, the preview, file
   safety and troubleshooting.
 
+## Download
+
+Every push to `main` is built by GitHub Actions and published on the
+[Releases page](https://github.com/deevodavis71/PixelFixer/releases) as a
+universal app (Apple silicon and Intel, macOS 14 or later).
+
+1. Install Python and the engine's libraries (once):
+   `brew install python`, then
+   `python3 -m pip install --break-system-packages numpy scipy rawpy pillow`.
+2. Download the latest `PixelFixer-….zip`, unzip it, and drag
+   **PixelFixer.app** to Applications.
+3. The app isn't notarised by Apple, so macOS blocks the first launch. Open
+   **System Settings → Privacy & Security**, scroll down and click
+   **Open Anyway**.
+
 ## Building from source (macOS 14 or later)
 
 You need:
@@ -122,9 +137,12 @@ Notes:
   installed as above.
 - Any maps in `maps/` are bundled into the app and installed on first launch.
   Maps are specific to one camera body, so make your own from a dark frame.
-- The app is ad-hoc signed for the Mac it was built on. If you copy it to
-  another Mac, macOS Gatekeeper will block it; right-click it and choose
-  **Open** the first time.
+- `ARCHS="arm64 x86_64" app/build.sh` builds a universal app, as the release
+  workflow does. `BUILD_NUMBER=n` sets the build number. The version comes
+  from `pyproject.toml`.
+- The app is ad-hoc signed, not notarised. If you copy it to another Mac,
+  Gatekeeper blocks the first launch; allow it with **Open Anyway** in
+  **System Settings → Privacy & Security**.
 - Tests: put a lossless-compressed NEF in the project root, then run
   `python3 -m pip install --break-system-packages pytest && python3 -m pytest tests`.
   Raw files are git-ignored.
